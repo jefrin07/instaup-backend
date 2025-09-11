@@ -8,6 +8,7 @@ import { errorHandler } from "./middlewares/errorMiddleware.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
+const origin = process.env.CLIENT_URL;
 connectDB();
 
 app.use(express.json());
@@ -15,7 +16,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // your frontend (Vite default port)
+    origin: origin, // your frontend (Vite default port)
     credentials: true, // allow cookies
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
