@@ -5,6 +5,8 @@ import "dotenv/config";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
+import { functions, inngest } from "./inngest/index.js";
+import { serve } from "inngest/express";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -25,6 +27,7 @@ app.use(
 
 app.get("/", (req, res) => res.send("API Working"));
 app.use("/api/auth", authRoutes);
+app.use("/api/inngest", serve({ client: inngest, functions }));
 
 app.use(errorHandler);
 

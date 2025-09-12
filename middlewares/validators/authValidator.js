@@ -23,16 +23,15 @@ export const registerValidation = [
     }),
 
   body("password")
+    .trim()
     .notEmpty()
     .withMessage("Password is required")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters")
-    .matches(/[A-Z]/)
-    .withMessage("Password must contain at least one uppercase letter")
-    .matches(/[0-9]/)
-    .withMessage("Password must contain at least one number")
-    .matches(/[@$!%*?&]/)
-    .withMessage("Password must contain at least one special character"),
+    .isLength({ min: 8, max: 64 })
+    .withMessage("Password must be between 8 and 64 characters")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).+$/)
+    .withMessage(
+      "Password must include at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
 
   body("role")
     .optional()
