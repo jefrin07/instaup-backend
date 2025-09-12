@@ -4,6 +4,7 @@ import userModel from "../models/UserModel.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import transporter from "../config/nodemailer.js";
+import { inngest } from "../inngest/index.js";
 
 export const register = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -99,6 +100,17 @@ export const login = asyncHandler(async (req, res) => {
     secure: process.env.NODE_ENV === "production", // only HTTPS in production
     sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // prevent CSRF
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  await inngest.send({
+    name: "user/logged.in",
+    data: {
+      userId: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      timestamp: new Date().toISOString(),
+    },
   });
 
   res.status(200).json({
