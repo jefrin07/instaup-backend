@@ -5,6 +5,7 @@ import { sendEmail } from "../utils/sendEmail.js";
 export const inngest = new Inngest({
   id: "InstaUp",
   signingKey: process.env.INNGEST_SIGNING_KEY, // <- add this
+  eventKey: process.env.INNGEST_EVENT_KEY, // needed to send events
 });
 
 export const userLoggedInFn = inngest.createFunction(
