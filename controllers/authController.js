@@ -78,7 +78,7 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   // Find user
-  const user = await userModel.findOne({ email });
+  const user = await userModel.findOne({ email }).select("+password"); // include password for verification
   if (!user || !user.password) {
     return res.status(401).json({ message: "Invalid email or password" });
   }
@@ -95,13 +95,15 @@ export const login = asyncHandler(async (req, res) => {
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
+
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // only HTTPS in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // prevent CSRF
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
+  // Send event to Inngest
   await inngest.send({
     name: "user/logged.in",
     data: {
@@ -113,14 +115,12 @@ export const login = asyncHandler(async (req, res) => {
     },
   });
 
+  // Prepare user data without password
+  const { password: _, ...userData } = user.toObject();
+
   res.status(200).json({
     message: "Login successful",
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
+    user: userData, // all fields except password
   });
 });
 

@@ -16,11 +16,15 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, default: "" },
     avatar: { type: String, default: "" },
     profile_picture: { type: String, default: "" },
+    profile_public_id: { type: String, default: "" }, // <-- NEW field to store Cloudinary public_id
     cover_picture: { type: String, default: "" },
+    cover_public_id: { type: String, default: "" }, // <-- NEW field to store Cloudinary public_id
     location: { type: String, default: "" },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // added
     connections: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // added
+    followRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    isPrivate: { type: Boolean, default: false }, // private account
     role: {
       type: String,
       enum: ["user", "admin", "moderator"],

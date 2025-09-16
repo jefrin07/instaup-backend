@@ -6,6 +6,7 @@ import { sendEmail } from "../utils/sendEmail.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+
 export const googleLogin = asyncHandler(async (req, res) => {
   const { token } = req.body;
 
@@ -23,12 +24,11 @@ export const googleLogin = asyncHandler(async (req, res) => {
     const payload = ticket.getPayload();
     const { sub, email, name, picture } = payload;
 
-    // 2. Find user by email
+    // 2. Find or create user
     let user = await userModel.findOne({ email });
     let isNewUser = false;
 
     if (!user) {
-      // New Google user → create
       user = await userModel.create({
         googleId: sub,
         name,
@@ -40,20 +40,14 @@ export const googleLogin = asyncHandler(async (req, res) => {
       });
       isNewUser = true;
     } else {
-      // Existing normal user → link Google account
-      if (!user.googleId) {
-        user.googleId = sub;
-      }
-      if (!user.avatar) {
-        user.avatar = picture;
-      }
-      if (!user.isAccountVerified) {
-        user.isAccountVerified = true; // auto-verify if using Google
-      }
+      // Existing user → update Google info if not set
+      if (!user.googleId) user.googleId = sub;
+      if (!user.avatar) user.avatar = picture;
+      if (!user.isAccountVerified) user.isAccountVerified = true;
       await user.save();
     }
 
-    // 3. Send welcome email (only if new user)
+    // 3. Send welcome email if new user
     if (isNewUser) {
       try {
         await sendEmail({
@@ -71,7 +65,6 @@ export const googleLogin = asyncHandler(async (req, res) => {
         });
       } catch (emailErr) {
         console.error("❌ Failed to send welcome email:", emailErr.message);
-        // don’t block login if email fails
       }
     }
 
@@ -90,16 +83,13 @@ export const googleLogin = asyncHandler(async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // 6. Respond
+    // 6. Remove password before sending
+    const { password, ...userData } = user.toObject();
+
+    // 7. Respond
     res.status(200).json({
       message: "Google login successful",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        role: user.role,
-      },
+      user: userData, // all fields except password
     });
   } catch (err) {
     console.error("Google login error:", err.message);
