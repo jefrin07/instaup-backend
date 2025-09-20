@@ -1,5 +1,6 @@
 import userModel from "../models/UserModel.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import Post from "../models/Post.js";
 
 // Discover users
 export const discoverUsers = asyncHandler(async (req, res) => {
@@ -160,51 +161,90 @@ export const cancelFollowRequest = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Follow request canceled successfully" });
 });
 
-export const getUserProfile = asyncHandler(async (req, res) => {
+// GET /api/profile/getUserInfo/:id
+export const getUserInfo = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const currentUserId = req.user._id.toString();
 
-  const otheruser = await userModel
+  const otherUser = await userModel
     .findById(id)
     .select("-password")
-    .populate("followers", "username name profile_picture")
-    .populate("following", "username name profile_picture");
+    .populate("followers", "_id")
+    .populate("following", "_id");
 
-  if (!otheruser) {
+  if (!otherUser) {
     return res.status(404).json({ message: "User not found" });
   }
 
-  let isFollowing = otheruser.followers.some(
+  const isFollowing = otherUser.followers.some(
+    (f) => f._id.toString() === currentUserId
+  );
+  const requestSent = otherUser.followRequests?.some(
     (f) => f._id.toString() === currentUserId
   );
 
-  let requestSent = otheruser.followRequests?.some(
-    (f) => f._id.toString() === currentUserId
-  );
-
-  // If profile is private and not following → hide posts
-  let responseUser = {
-    _id: otheruser._id,
-    username: otheruser.username,
-    name: otheruser.name,
-    bio: otheruser.bio,
-    profile_picture: otheruser.profile_picture,
-    cover_picture: otheruser.cover_picture,
-    isPrivate: otheruser.isPrivate,
-    followersCount: otheruser.followers.length,
-    followingCount: otheruser.following.length,
-    isFollowing,
-    requestSent,
-  };
-
-  if (!otheruser.isPrivate || isFollowing) {
-    // Only include posts if profile is public OR you follow them
-    responseUser.posts = otheruser.posts || [];
-  }
+  // Count total posts
+  const totalPosts = await Post.countDocuments({ user: otherUser._id });
 
   res.status(200).json({
     success: true,
-    user: responseUser,
+    user: {
+      _id: otherUser._id,
+      username: otherUser.username,
+      name: otherUser.name,
+      bio: otherUser.bio,
+      profile_picture: otherUser.profile_picture,
+      cover_picture: otherUser.cover_picture,
+      isPrivate: otherUser.isPrivate,
+      followersCount: otherUser.followers.length,
+      followingCount: otherUser.following.length,
+      isFollowing,
+      requestSent,
+      totalPosts, // include totalPosts for frontend
+    },
   });
 });
 
+// GET /api/profile/getUserPosts/:id?page=1&limit=5
+export const getUserPosts = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const currentUserId = req.user._id.toString();
+
+  const user = await userModel.findById(id).populate("followers", "_id");
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Check privacy
+  const isFollowing = user.followers.some(
+    (f) => f._id.toString() === currentUserId
+  );
+  if (user.isPrivate && !isFollowing) {
+    return res.status(403).json({ message: "Cannot view posts" });
+  }
+
+  // Count total posts
+  const totalPosts = await Post.countDocuments({ user: id });
+
+  // Fetch paginated posts
+  const posts = await Post.find({ user: id })
+    .populate("user", "username name profile_picture")
+    .populate("comments.user", "username name profile_picture")
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+
+  // Sort comments newest → oldest
+  posts.forEach((post) => {
+    if (Array.isArray(post.comments)) {
+      post.comments.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+    } else {
+      post.comments = [];
+    }
+  });
+
+  res.status(200).json({ posts, totalPosts });
+});

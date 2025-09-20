@@ -11,7 +11,7 @@ import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { updateProfileValidation } from "../middlewares/validators/profileValidation.js";
 import { handleValidationErrors } from "../middlewares/handleValidationErrors.js";
 import upload from "../utils/multer.js";
-import { getUserProfile } from "../controllers/userController.js";
+import { getUserInfo, getUserPosts } from "../controllers/userController.js";
 
 const profileRoutes = express.Router();
 
@@ -41,6 +41,7 @@ profileRoutes.put(
 
 profileRoutes.put("/setAccountType", authMiddleware, setAccountType);
 
-profileRoutes.get("/getUserProfile/:id", authMiddleware, getUserProfile);
+profileRoutes.get("/getUserInfo/:id", authMiddleware, getUserInfo);
+profileRoutes.get("/getUserPosts/:id", authMiddleware, getUserPosts);
 
 export default profileRoutes;

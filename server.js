@@ -11,6 +11,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import connectionRouter from "./routes/connectionsRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import storyRoutes from "./routes/storyRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -35,6 +36,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/connections", connectionRouter);
 app.use("/api/post", postRoutes);
+app.use("/api/story", storyRoutes);
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
 app.use(errorHandler);
@@ -42,4 +44,3 @@ app.use(errorHandler);
 app.listen(port, () =>
   console.log(`Server Started on PORT http://localhost:${port}`)
 );
-

@@ -1,5 +1,7 @@
 import { Inngest } from "inngest";
 import { sendEmail } from "../utils/sendEmail.js";
+import Story from "../models/Story.js";
+import cloudinary from "../utils/cloudinary.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({
@@ -30,5 +32,44 @@ export const userLoggedInFn = inngest.createFunction(
     return { status: "ok", notified: email };
   }
 );
+
+export const deleteStoryFn = inngest.createFunction(
+  { id: "delete-story-after-24h" },
+  { event: "app/story.delete" },
+  async ({ event, step }) => {
+    const { storyId } = event.data;
+    if (!storyId) {
+      return { status: "error", reason: "No storyId provided" };
+    }
+
+    // Schedule deletion 24h from now
+    const in24Hrs = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await step.sleepUntil("wait-24h", in24Hrs);
+
+    const result = await step.run("delete-story", async () => {
+      const story = await Story.findById(storyId);
+      if (!story) {
+        return { deleted: false, reason: "Story not found" };
+      }
+
+      // Delete associated images from Cloudinary
+      if (story.image_urls && story.image_urls.length > 0) {
+        await Promise.all(
+          story.image_urls.map((img) =>
+            cloudinary.uploader.destroy(img.public_id)
+          )
+        );
+      }
+
+      // Delete story from DB
+      await story.deleteOne();
+
+      return { deleted: true, storyId };
+    });
+
+    return { status: "ok", ...result };
+  }
+);
+
 // Create an empty array where we'll export future Inngest functions
-export const functions = [userLoggedInFn];
+export const functions = [userLoggedInFn, deleteStoryFn];
